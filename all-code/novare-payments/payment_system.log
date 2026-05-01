@@ -1,0 +1,19 @@
+2026-04-07 14:13:32,429 - main - INFO -  Starting payment flow for profile: 89bcda54-2e59-45b1-8290-985525599567
+2026-04-07 14:13:32,429 - main - INFO -    - Jobs: 1
+2026-04-07 14:13:32,429 - main - INFO -    - Amount per job: ₹5000
+2026-04-07 14:13:32,429 - main - INFO -    - Total amount: ₹5000
+2026-04-07 14:13:32,429 - main - INFO - 📡 Using notify_url: https://novare-payments.loca.lt/webhook/cashfree
+2026-04-07 14:13:32,954 - httpx - INFO - HTTP Request: GET https://mfkmwkyatoczkrqawffk.supabase.co/rest/v1/profiles?select=%2A&id=eq.89bcda54-2e59-45b1-8290-985525599567 "HTTP/2 200 OK"
+2026-04-07 14:13:32,957 - main - INFO - Fetching profile with ID: 89bcda54-2e59-45b1-8290-985525599567
+2026-04-07 14:13:32,957 - main - INFO - Creating payment link for profile: 89bcda54-2e59-45b1-8290-985525599567
+2026-04-07 14:13:32,958 - main - INFO - Email: 23b2524@iitb.ac.in, Phone: +919359278049, Amount: 5000, Jobs: 1
+2026-04-07 14:13:33,057 - main - INFO - Payment link created successfully - Link ID: link_25599567_20260407141332
+2026-04-07 14:13:33,058 - main - INFO - ✅ Payment link created: https://payments.cashfree.com/links/Pa70rgdekos0_AAAAAAAQ3R4
+2026-04-19 11:38:22,572 - main - INFO -  Starting payment flow for profile: 98d80da3-440c-4c69-8f9d-19734ebf1955
+2026-04-19 11:38:22,573 - main - INFO -    - Jobs: 1
+2026-04-19 11:38:22,574 - main - INFO -    - Amount per job: ₹5000
+2026-04-19 11:38:22,574 - main - INFO -    - Total amount: ₹5000
+2026-04-19 11:38:22,574 - main - INFO - 📡 Using notify_url: https://novare-payments.loca.lt/webhook/cashfree
+2026-04-19 11:38:23,365 - httpx - INFO - HTTP Request: GET https://mfkmwkyatoczkrqawffk.supabase.co/rest/v1/profiles?select=%2A&id=eq.98d80da3-440c-4c69-8f9d-19734ebf1955 "HTTP/2 200 OK"
+2026-04-19 11:38:23,367 - main - INFO - Fetching profile with ID: 98d80da3-440c-4c69-8f9d-19734ebf1955
+2026-04-19 11:38:23,367 - main - ERROR - Missing required profile fields
