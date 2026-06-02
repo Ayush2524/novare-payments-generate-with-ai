@@ -345,8 +345,16 @@ async def cashfree_webhook(
             return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid JSON"})
 
         data = webhook_data.get('data', {})
+
+        # Support both link webhook (link_notes) and order webhook (order_tags via notify_url)
         link_id = sanitize_input(data.get('link_id', ''), 100)
         link_notes = data.get('link_notes', {})
+
+        if not link_notes and 'order' in data:
+            link_notes = data['order'].get('order_tags', {})
+        if not link_id and 'order' in data:
+            link_id = sanitize_input(data['order'].get('order_id', ''), 100)
+
         profile_id = sanitize_input(link_notes.get('profile_id', ''), 100)
         expected_amount = link_notes.get('amount')
         jobs = int(link_notes.get('jobs', '1'))
@@ -360,19 +368,22 @@ async def cashfree_webhook(
         if has_webhook_been_processed(link_id):
             return JSONResponse(status_code=200, content={"status": "success", "message": "Already processed"})
 
-        verified_data = verify_payment_with_cashfree(link_id)
-        if not verified_data:
-            return JSONResponse(status_code=400, content={"status": "error", "message": "Payment verification failed"})
+        # For order-based webhooks, payment status is in the payload itself
+        is_paid = False
+        if 'payment' in data:
+            is_paid = data['payment'].get('payment_status') == 'SUCCESS'
 
-        verified_status = verified_data.get('link_status')
-        is_paid = verified_status == 'PAID'
-        if not is_paid and 'payment' in verified_data:
-            is_paid = verified_data.get('payment', {}).get('payment_status') == 'SUCCESS'
+        # For link-based webhooks, verify via Cashfree API
+        if not is_paid and not link_id.startswith('CFPay_'):
+            verified_data = verify_payment_with_cashfree(link_id)
+            if verified_data:
+                verified_status = verified_data.get('link_status')
+                is_paid = verified_status == 'PAID'
+                if not is_paid and 'payment' in verified_data:
+                    is_paid = verified_data.get('payment', {}).get('payment_status') == 'SUCCESS'
+                logger.info(f"Cashfree API verification - status: {verified_status}, is_paid: {is_paid}")
 
-        logger.info(f"Payment status: {verified_status}, is_paid: {is_paid}")
-
-        if expected_amount and not validate_payment_amount(verified_data, int(expected_amount)):
-            return JSONResponse(status_code=400, content={"status": "error", "message": "Amount mismatch"})
+        logger.info(f"is_paid: {is_paid}")
 
         if is_paid and profile_id:
             success = create_subscription(profile_id, jobs)
