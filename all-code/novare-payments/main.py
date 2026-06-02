@@ -26,7 +26,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 CASHFREE_URL = os.getenv("CASHFREE_URL", "https://api.cashfree.com/pg/links")
 CASHFREE_CLIENT_ID = os.getenv("CASHFREE_CLIENT_ID")
 CASHFREE_CLIENT_SECRET = os.getenv("CASHFREE_CLIENT_SECRET")
-LOCALTUNNEL_PATH = "https://novare-payments.loca.lt"
+LOCALTUNNEL_PATH = "https://grafted-seltzer-shorter.ngrok-free.dev"
 AMOUNT_PER_JOB = int(os.getenv("AMOUNT"))
 BOT_CALLBACK_URL = os.getenv("BOT_CALLBACK_URL", "")  # e.g. https://xxx.ngrok-free.app
 
