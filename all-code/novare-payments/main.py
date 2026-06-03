@@ -169,23 +169,37 @@ def create_subscription(profile_id: str, jobs: int) -> bool:
         if not isinstance(jobs, int) or jobs <= 0:
             logger.error(f"Invalid jobs value: {jobs}")
             return False
-        subscription_data = {
-            "id": str(uuid.uuid4()),
-            "profile_id": profile_id,
-            "status": "paid",
-            "jobs_remaining": jobs,
-            "evaluations_remaining": jobs,
-            "created_at": datetime.now().isoformat()
-        }
-        logger.info(f"Creating subscription for profile: {profile_id}")
-        response = supabase.table('subscriptions').insert(subscription_data).execute()
+
+        logger.info(f"Upserting subscription for profile: {profile_id}, adding {jobs} job(s)")
+
+        existing = supabase.table('subscriptions').select('jobs_remaining,evaluations_remaining').eq('profile_id', profile_id).execute()
+
+        if existing.data:
+            current = existing.data[0]
+            new_jobs = (current.get('jobs_remaining') or 0) + jobs
+            new_evals = (current.get('evaluations_remaining') or 0) + jobs
+            response = supabase.table('subscriptions').update({
+                'status': 'paid',
+                'jobs_remaining': new_jobs,
+                'evaluations_remaining': new_evals,
+            }).eq('profile_id', profile_id).execute()
+        else:
+            response = supabase.table('subscriptions').insert({
+                "id": str(uuid.uuid4()),
+                "profile_id": profile_id,
+                "status": "paid",
+                "jobs_remaining": jobs,
+                "evaluations_remaining": jobs,
+                "created_at": datetime.now().isoformat()
+            }).execute()
+
         if response.data:
-            logger.info(f"✅ Subscription created successfully for profile: {profile_id}")
+            logger.info(f"✅ Subscription upserted successfully for profile: {profile_id}")
             return True
-        logger.error(f"Failed to create subscription for profile: {profile_id}")
+        logger.error(f"Failed to upsert subscription for profile: {profile_id}")
         return False
     except Exception as e:
-        logger.error(f"Error creating subscription: {e}")
+        logger.error(f"Error upserting subscription: {e}")
         return False
 
 # ============================ PAYMENT VERIFICATION ============================
