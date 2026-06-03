@@ -38,11 +38,12 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl -f http://127.0.0.1:8000/health || exit 1
 
-# use Gunicorn with Uvicorn workers (4 workers - tune to CPU)
+# Single worker — payment webhooks are low-frequency and the in-memory
+# idempotency dict must be shared within one process to block duplicates.
 CMD ["gunicorn", "main:app", \
       "-k", "uvicorn.workers.UvicornWorker", \
       "--bind", "0.0.0.0:8000", \
-      "--workers", "4", \
+      "--workers", "1", \
       "--worker-connections", "1000", \
       "--timeout", "120", \
       "--log-level", "info", \

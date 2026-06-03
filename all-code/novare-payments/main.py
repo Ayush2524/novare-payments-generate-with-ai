@@ -69,27 +69,40 @@ def check_rate_limit(ip: str, request_type: str = "webhook", max_requests: int =
 
 # ============================ IDEMPOTENCY TRACKING ============================
 
-processed_webhooks = {}
+processed_webhooks = {}   # link_id  → datetime (1h dedup)
+payment_processed = {}    # profile_id → datetime (60s dedup, blocks late link webhook)
 
 def claim_webhook(link_id: str) -> bool:
     """
-    Atomically check-and-claim a webhook ID.
-    Returns True if already claimed (duplicate — caller should skip).
-    Returns False and marks it claimed if this is the first call.
-
-    No await between check and set, so asyncio's single-threaded event loop
-    guarantees no other coroutine can interleave here.
+    Atomically check-and-claim by link_id (1h window).
+    Returns True = duplicate, skip. False = first call, proceed.
+    Safe within a single process; use workers=1 in Gunicorn.
     """
     now = datetime.now()
     if link_id in processed_webhooks:
         if (now - processed_webhooks[link_id]).total_seconds() < 3600:
-            logger.info(f"Duplicate webhook ignored: {link_id}")
+            logger.info(f"Duplicate webhook ignored (link_id): {link_id}")
             return True
     processed_webhooks[link_id] = now
     cutoff = now - timedelta(hours=24)
     for k in [k for k, v in list(processed_webhooks.items()) if v < cutoff]:
         del processed_webhooks[k]
     logger.info(f"Webhook claimed: {link_id}")
+    return False
+
+def claim_payment(profile_id: str) -> bool:
+    """
+    Atomically check-and-claim by profile_id (60s window).
+    Blocks the late-arriving link-type webhook from re-processing
+    the same payment that the earlier order-type webhook already handled.
+    Returns True = already processed recently, skip.
+    """
+    now = datetime.now()
+    if profile_id in payment_processed:
+        if (now - payment_processed[profile_id]).total_seconds() < 60:
+            logger.info(f"Duplicate payment ignored (profile_id, 60s window): {profile_id}")
+            return True
+    payment_processed[profile_id] = now
     return False
 
 def verify_cashfree_signature(payload: str, signature: str, timestamp: str) -> bool:
@@ -406,6 +419,8 @@ async def cashfree_webhook(
         logger.info(f"is_paid: {is_paid}")
 
         if is_paid and profile_id:
+            if claim_payment(profile_id):
+                return JSONResponse(status_code=200, content={"status": "success", "message": "Already processed"})
             success = create_subscription(profile_id, jobs)
             if success:
                 logger.info(f"✅ Payment processed for profile: {profile_id}")
