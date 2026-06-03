@@ -28,7 +28,7 @@ CASHFREE_CLIENT_ID = os.getenv("CASHFREE_CLIENT_ID")
 CASHFREE_CLIENT_SECRET = os.getenv("CASHFREE_CLIENT_SECRET")
 LOCALTUNNEL_PATH = "https://grafted-seltzer-shorter.ngrok-free.dev"
 AMOUNT_PER_JOB = int(os.getenv("AMOUNT"))
-BOT_CALLBACK_URL = os.getenv("BOT_CALLBACK_URL", "")  # e.g. https://xxx.ngrok-free.app
+BOT_CALLBACK_URL = os.getenv("BOT_CALLBACK_URL", "")  # e.g. https://zenhyre-bot.loca.lt
 
 # Validate required environment variables
 required_vars = ["SUPABASE_URL", "SUPABASE_KEY", "CASHFREE_CLIENT_ID", "CASHFREE_CLIENT_SECRET"]
@@ -370,6 +370,7 @@ async def cashfree_webhook(
 
         # For order-based webhooks, payment status is in the payload itself
         is_paid = False
+        verified_status = None
         if 'payment' in data:
             is_paid = data['payment'].get('payment_status') == 'SUCCESS'
 
@@ -443,8 +444,7 @@ async def start_payment(
 
         logger.info(f"Starting payment flow for profile: {profile_id}, jobs: {jobs}, amount: ₹{amount}")
 
-        public_url = "https://novare-payments.loca.lt"
-        notify_url = f"{public_url}/webhook/cashfree"
+        notify_url = f"{LOCALTUNNEL_PATH}/webhook/cashfree"
         logger.info(f"📡 Using notify_url: {notify_url}")
 
         profile = fetch_profile_by_id(profile_id)
