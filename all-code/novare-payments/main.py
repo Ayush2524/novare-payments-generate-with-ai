@@ -71,21 +71,26 @@ def check_rate_limit(ip: str, request_type: str = "webhook", max_requests: int =
 
 processed_webhooks = {}
 
-def has_webhook_been_processed(link_id: str) -> bool:
-    if link_id in processed_webhooks:
-        processed_time = processed_webhooks[link_id]
-        if (datetime.now() - processed_time).total_seconds() < 3600:
-            logger.info(f"Webhook already processed: {link_id}")
-            return True
-    return False
+def claim_webhook(link_id: str) -> bool:
+    """
+    Atomically check-and-claim a webhook ID.
+    Returns True if already claimed (duplicate — caller should skip).
+    Returns False and marks it claimed if this is the first call.
 
-def mark_webhook_processed(link_id: str):
-    processed_webhooks[link_id] = datetime.now()
-    logger.info(f"Webhook marked as processed: {link_id}")
-    cutoff = datetime.now() - timedelta(hours=24)
-    to_remove = [k for k, v in processed_webhooks.items() if v < cutoff]
-    for k in to_remove:
+    No await between check and set, so asyncio's single-threaded event loop
+    guarantees no other coroutine can interleave here.
+    """
+    now = datetime.now()
+    if link_id in processed_webhooks:
+        if (now - processed_webhooks[link_id]).total_seconds() < 3600:
+            logger.info(f"Duplicate webhook ignored: {link_id}")
+            return True
+    processed_webhooks[link_id] = now
+    cutoff = now - timedelta(hours=24)
+    for k in [k for k, v in list(processed_webhooks.items()) if v < cutoff]:
         del processed_webhooks[k]
+    logger.info(f"Webhook claimed: {link_id}")
+    return False
 
 def verify_cashfree_signature(payload: str, signature: str, timestamp: str) -> bool:
     if not signature or not timestamp:
@@ -379,7 +384,7 @@ async def cashfree_webhook(
         if not link_id or not profile_id:
             return JSONResponse(status_code=400, content={"status": "error", "message": "Missing required fields"})
 
-        if has_webhook_been_processed(link_id):
+        if claim_webhook(link_id):
             return JSONResponse(status_code=200, content={"status": "success", "message": "Already processed"})
 
         # For order-based webhooks, payment status is in the payload itself
@@ -403,7 +408,6 @@ async def cashfree_webhook(
         if is_paid and profile_id:
             success = create_subscription(profile_id, jobs)
             if success:
-                mark_webhook_processed(link_id)
                 logger.info(f"✅ Payment processed for profile: {profile_id}")
 
                 # Notify the WhatsApp bot to resume job posting automatically
